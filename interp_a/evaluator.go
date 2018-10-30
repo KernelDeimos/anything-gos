@@ -63,7 +63,6 @@ func (evaluator HybridEvaluator) evaluate(
 	default:
 		return nil, errors.New("evaluator: only string types are supported")
 	}
-	return nil, nil
 }
 
 func (evaluator HybridEvaluator) OpEvaluate(

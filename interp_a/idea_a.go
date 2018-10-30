@@ -2,7 +2,7 @@ package interp_a
 
 type InterpreterFactoryA struct{}
 
-func (ifa InterpreterFactoryA) MakeExec() Operation {
+func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	fmap := map[string]HybridEvaluatorEntry{}
 
 	// Function to add a new operation (o)
@@ -44,5 +44,5 @@ func (ifa InterpreterFactoryA) MakeExec() Operation {
 
 	exe.AddOperation("@", exe.OpAddOperation)
 
-	return exe.OpEvaluate
+	return exe
 }
