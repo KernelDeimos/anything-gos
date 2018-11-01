@@ -88,20 +88,22 @@ func (evaluator HybridEvaluator) OpAddOperation(
 	args []interface{},
 ) ([]interface{}, error) {
 	//::gen verify-args add-operation name string function Operation
+	// -- generated code until ::end (mode=default)
 	if len(args) < 2 {
-		return nil, errors.New("add-operation takes 2 arguments")
+		return nil, errors.New("add-operation requires at least 2 arguments")
 	}
+
 	var name string
 	var function Operation
 	{
 		var ok bool
 		name, ok = args[0].(string)
 		if !ok {
-			return nil, errors.New("<name> must be a string")
+			return nil, errors.New("add-operation: argument 0: name; must be type string")
 		}
 		function, ok = args[1].(Operation)
 		if !ok {
-			return nil, errors.New("<function> must be an operation")
+			return nil, errors.New("add-operation: argument 1: function; must be type Operation")
 		}
 	}
 	//::end

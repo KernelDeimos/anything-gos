@@ -6,14 +6,21 @@ import (
 )
 
 func BuiltinFormat(args []interface{}) ([]interface{}, error) {
+	//::gen verify-args format args0 string
+	// -- generated code until ::end (mode=default)
 	if len(args) < 1 {
-		return nil, errors.New("format requires at least 1 argument")
+		return nil, errors.New("format requires at least 1 arguments")
+	}
 
+	var args0 string
+	{
+		var ok bool
+		args0, ok = args[0].(string)
+		if !ok {
+			return nil, errors.New("format: argument 0: args0; must be type string")
+		}
 	}
-	args0, ok := args[0].(string)
-	if !ok {
-		return nil, errors.New("first argument must be string")
-	}
+	//::end
 	result := fmt.Sprintf(args0, args[1:]...)
 
 	return []interface{}{result}, nil
