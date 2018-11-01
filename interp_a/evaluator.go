@@ -84,6 +84,16 @@ func (evaluator HybridEvaluator) AddOperation(
 	}
 }
 
+func (evaluator HybridEvaluator) GetOperation(
+	name string,
+) (Operation, HybridEvaluatorEntryTag, bool) {
+	entry, found := evaluator.functionsMap[name]
+	if !found {
+		return nil, -1, false
+	}
+	return entry.Op, entry.Tag, true
+}
+
 func (evaluator HybridEvaluator) OpAddOperation(
 	args []interface{},
 ) ([]interface{}, error) {
@@ -109,6 +119,31 @@ func (evaluator HybridEvaluator) OpAddOperation(
 	//::end
 	evaluator.AddOperation(name, function)
 	return []interface{}{}, nil
+}
+
+func (evaluator HybridEvaluator) OpGetOperation(
+	args []interface{},
+) ([]interface{}, error) {
+	//::gen verify-args add-operation name string
+	// -- generated code until ::end (mode=default)
+	if len(args) < 1 {
+		return nil, errors.New("add-operation requires at least 1 arguments")
+	}
+
+	var name string
+	{
+		var ok bool
+		name, ok = args[0].(string)
+		if !ok {
+			return nil, errors.New("add-operation: argument 0: name; must be type string")
+		}
+	}
+	//::end
+	op, _, found := evaluator.GetOperation(name)
+	if !found {
+		return nil, fmt.Errorf("could not find %s", name)
+	}
+	return []interface{}{op}, nil
 }
 
 func NewHybridEvaluator(

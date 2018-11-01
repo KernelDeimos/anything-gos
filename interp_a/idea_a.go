@@ -2,6 +2,23 @@ package interp_a
 
 type InterpreterFactoryA struct{}
 
+// MakeEmpty makes an evaluator with only mutator functions
+func (ifa InterpreterFactoryA) MakeEmpty() HybridEvaluator {
+	exe, err := NewHybridEvaluator(map[string]HybridEvaluatorEntry{})
+	if err != nil {
+		// This error only occurs if initialization code above is invalid
+		panic(err)
+	}
+
+	// Bind evaluator mutators
+	exe.AddOperation(":", exe.OpAddOperation)
+	exe.AddOperation("$", exe.OpGetOperation)
+
+	return exe
+}
+
+// MakeExec makes the root operation for the interpreter, which is a
+// HybridEvaluator with builtin functions already added to it.
 func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	fmap := map[string]HybridEvaluatorEntry{}
 
@@ -34,6 +51,7 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	//::gen register-all-functions
 	o("format", BuiltinFormat)
 	o("cat", BuiltinCat)
+	o("store", BuiltinStore)
 	//::end
 
 	exe, err := NewHybridEvaluator(fmap)
@@ -42,7 +60,9 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 		panic(err)
 	}
 
-	exe.AddOperation("@", exe.OpAddOperation)
+	// Bind evaluator mutators
+	exe.AddOperation(":", exe.OpAddOperation)
+	exe.AddOperation("$", exe.OpGetOperation)
 
 	return exe
 }

@@ -33,3 +33,10 @@ func BuiltinCat(args []interface{}) ([]interface{}, error) {
 	}
 	return []interface{}{result}, nil
 }
+
+func BuiltinStore(args []interface{}) ([]interface{}, error) {
+	op := func(_ []interface{}) ([]interface{}, error) {
+		return args, nil
+	}
+	return []interface{}{Operation(op)}, nil
+}
