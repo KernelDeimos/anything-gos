@@ -48,7 +48,7 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 		}
 	*/
 
-	//::gen register-all-functions
+	//::gen-idea register-all-functions
 	o("format", BuiltinFormat)
 	o("cat", BuiltinCat)
 	o("store", BuiltinStore)

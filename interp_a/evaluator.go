@@ -1,5 +1,7 @@
 package interp_a
 
+//go:generate genfor-interp-a $GOFILE
+
 import (
 	"errors"
 	"fmt"
@@ -98,7 +100,6 @@ func (evaluator HybridEvaluator) OpAddOperation(
 	args []interface{},
 ) ([]interface{}, error) {
 	//::gen verify-args add-operation name string function Operation
-	// -- generated code until ::end (mode=default)
 	if len(args) < 2 {
 		return nil, errors.New("add-operation requires at least 2 arguments")
 	}
@@ -125,7 +126,6 @@ func (evaluator HybridEvaluator) OpGetOperation(
 	args []interface{},
 ) ([]interface{}, error) {
 	//::gen verify-args add-operation name string
-	// -- generated code until ::end (mode=default)
 	if len(args) < 1 {
 		return nil, errors.New("add-operation requires at least 1 arguments")
 	}

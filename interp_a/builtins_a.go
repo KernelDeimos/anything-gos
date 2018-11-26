@@ -1,5 +1,7 @@
 package interp_a
 
+//go:generate genfor-interp-a $GOFILE
+
 import (
 	"errors"
 	"fmt"
@@ -7,7 +9,6 @@ import (
 
 func BuiltinFormat(args []interface{}) ([]interface{}, error) {
 	//::gen verify-args format args0 string
-	// -- generated code until ::end (mode=default)
 	if len(args) < 1 {
 		return nil, errors.New("format requires at least 1 arguments")
 	}
