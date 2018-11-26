@@ -173,8 +173,6 @@ func (genner TaskGenerator) GenerateUpdateFile(
 func (genner TaskGenerator) ProcessLinesAndInsertGeneratedCode(
 	lines []string) ([]string, error) {
 
-	rIsGenLine := regexp.MustCompile(`^\/\/::gen`)
-
 	output := []string{}
 
 	const StateLookingForGen int = 1
@@ -202,32 +200,23 @@ func (genner TaskGenerator) ProcessLinesAndInsertGeneratedCode(
 			line, indentation := genner.Indents.TrimAndKeep(line)
 
 			// Continue to next iteration unless line starts with "//::gen"
-			isGenerate := rIsGenLine.MatchString(line)
-			if !isGenerate {
+			loc := genner.IsGenLine.FindStringIndex(line)
+			if loc == nil {
 				continue
 			}
 
 			// Get one or more tokens after "//::gen", or report error
-			var parts []string
-			{
-				parts = strings.Split(line, " ")[1:]
-				if len(parts) == 0 {
-					log.Warn(ErrEmptyGen)
-					return output, errors.New(ErrEmptyGen)
-				}
+			genLine := line[loc[1]:]
+			parts, err := toolparse.ParseListSimple(genLine)
+			if err != nil {
+				return output, err
 			}
 
 			// Get code to insert using the code generation operation
 			genLines := []string{}
 			{
-				// Need to convert tokens from []string to []interface{}
-				partsAsVoid := []interface{}{}
-				for _, part := range parts {
-					partsAsVoid = append(partsAsVoid, part)
-				}
-
 				// Run the code generator, get results as []interface{}
-				results, err := genner.Exec(partsAsVoid)
+				results, err := genner.Exec(parts)
 				if err != nil {
 					return output, err
 				}
