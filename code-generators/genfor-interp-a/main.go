@@ -71,7 +71,14 @@ func main() {
 		printf(&result, "}\n")
 
 		for _, item := range toCheck {
-			result = append(result, fmt.Sprintf("var %s %s", item[0], item[1]))
+			var typName string
+			switch item[1] {
+			case "integer":
+				typName = "int"
+			default:
+				typName = item[1]
+			}
+			result = append(result, fmt.Sprintf("var %s %s", item[0], typName))
 		}
 
 		result = append(result, "{")
@@ -80,12 +87,28 @@ func main() {
 			vName := item[0]
 			vType := item[1]
 
-			printf(&result, "\t%s, ok = args[%d].(%s)", vName, i, vType)
-			printf(&result, "\tif !ok {")
-			printf(&result, "\t\treturn nil, "+
-				`errors.New("%s: argument %d: %s; must be type %s")`,
-				fname, i, vName, vType)
-			printf(&result, "\t}")
+			switch vType {
+			case "integer":
+				result = append(result, "\tvar err error")
+				printf(&result, "\tvar %sStr string", vName)
+				printf(&result, "\t%sStr, ok = args[%d].(string)", vName, i)
+				printf(&result, "\tif !ok {")
+				printf(&result, "\t\treturn nil, "+
+					`errors.New("%s: argument %d: %s; must be type %s")`,
+					fname, i, vName, "int(string)")
+				printf(&result, "\t}")
+				printf(&result, "\t%s, err = strconv.Atoi(%sStr)", vName, vName)
+				printf(&result, "\tif err != nil {")
+				printf(&result, "\t\treturn nil, err")
+				printf(&result, "\t}")
+			default:
+				printf(&result, "\t%s, ok = args[%d].(%s)", vName, i, vType)
+				printf(&result, "\tif !ok {")
+				printf(&result, "\t\treturn nil, "+
+					`errors.New("%s: argument %d: %s; must be type %s")`,
+					fname, i, vName, vType)
+				printf(&result, "\t}")
+			}
 		}
 		result = append(result, "}")
 
@@ -142,6 +165,31 @@ func main() {
 				replacements["$uw-"+strconv.Itoa(i+1)] = strings.Title(repl)
 				replacements["$u-"+strconv.Itoa(i+1)] = strings.ToUpper(repl)
 				replacements["$l-"+strconv.Itoa(i+1)] = strings.ToLower(repl)
+
+				if repl != "" {
+					a := strings.Title(repl)
+					b := strings.Split(a, " ")
+					c := strings.Join(b, "")
+					replacements["$ucc-"+strconv.Itoa(i+1)] = c
+				}
+				if repl != "" {
+					a := repl[0:1] + strings.Title(repl[1:])
+					b := strings.Split(a, " ")
+					c := strings.Join(b, "")
+					replacements["$lcc-"+strconv.Itoa(i+1)] = c
+				}
+				if repl != "" {
+					a := repl[0:1] + strings.ToLower(repl[1:])
+					b := strings.Split(a, " ")
+					c := strings.Join(b, "_")
+					replacements["$lcu-"+strconv.Itoa(i+1)] = c
+				}
+				if repl != "" {
+					a := repl[0:1] + strings.ToLower(repl[1:])
+					b := strings.Split(a, " ")
+					c := strings.Join(b, "-")
+					replacements["$lcd-"+strconv.Itoa(i+1)] = c
+				}
 			}
 
 			result, _ := utilstr.AtomicReplace(args0, replacements)

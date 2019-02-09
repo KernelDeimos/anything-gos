@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/KernelDeimos/anything-gos/interp_a"
+	"github.com/KernelDeimos/gottagofast/toolparse"
 )
 
 /*
@@ -60,6 +61,7 @@ func (indents IndentationSet) TrimAndKeep(subject string) (
 
 type TaskGenerator struct {
 	// Line types
+	IsRunLine *regexp.Regexp // "//::declare"
 	IsGenLine *regexp.Regexp // "//::gen"
 	IsEndLine *regexp.Regexp // "//::end"
 
@@ -77,6 +79,7 @@ type Genner struct {
 
 func NewDefaultGenner() Genner {
 	tg := TaskGenerator{}
+	tg.IsRunLine = regexp.MustCompile(`^\/\/::run`)
 	tg.IsGenLine = regexp.MustCompile(`^\/\/::gen`)
 	tg.IsEndLine = regexp.MustCompile(`^\/\/::end`)
 
@@ -85,6 +88,25 @@ func NewDefaultGenner() Genner {
 	}
 
 	ii := interp_a.InterpreterFactoryA{}.MakeEmpty()
+	tg.Exec = ii.OpEvaluate
+
+	return Genner{
+		Do:     tg,
+		Interp: ii,
+	}
+}
+
+func NewGennerWithBuiltinsTest() Genner {
+	tg := TaskGenerator{}
+	tg.IsRunLine = regexp.MustCompile(`^\/\/::run`)
+	tg.IsGenLine = regexp.MustCompile(`^\/\/::gen`)
+	tg.IsEndLine = regexp.MustCompile(`^\/\/::end`)
+
+	tg.Indents = IndentationSet{
+		runes: []rune{' ', '\t'},
+	}
+
+	ii := interp_a.InterpreterFactoryA{}.MakeExec()
 	tg.Exec = ii.OpEvaluate
 
 	return Genner{
@@ -152,6 +174,7 @@ func (genner TaskGenerator) GenerateUpdateFile(
 	}
 
 	// Write the modified file contents
+	log.Infof("Rewriting code: '%s' with mode %#o", sourcefile, sourcePermissions)
 	err = ioutil.WriteFile(sourcefile, outputBytes, sourcePermissions)
 	if err != nil {
 		return err
@@ -200,45 +223,58 @@ func (genner TaskGenerator) ProcessLinesAndInsertGeneratedCode(
 			line, indentation := genner.Indents.TrimAndKeep(line)
 
 			// Continue to next iteration unless line starts with "//::gen"
-			loc := genner.IsGenLine.FindStringIndex(line)
-			if loc == nil {
-				continue
-			}
-
-			// Get one or more tokens after "//::gen", or report error
-			genLine := line[loc[1]:]
-			parts, err := toolparse.ParseListSimple(genLine)
-			if err != nil {
-				return output, err
-			}
-
-			// Get code to insert using the code generation operation
-			genLines := []string{}
-			{
-				// Run the code generator, get results as []interface{}
-				results, err := genner.Exec(parts)
+			locRun := genner.IsRunLine.FindStringIndex(line)
+			locGen := genner.IsGenLine.FindStringIndex(line)
+			if locGen != nil {
+				// Get one or more tokens after "//::gen", or report error
+				genLine := line[locGen[1]:]
+				parts, err := toolparse.ParseListSimple(genLine)
 				if err != nil {
 					return output, err
 				}
 
-				// Interpret results as lines of code to insert
-				for _, datum := range results {
-					switch line := datum.(type) {
-					case string:
-						// A single line of generated code
-						genLines = append(genLines, line)
-					case []string:
-						// TODO: implement automatic scope limiters here
-						return output, errors.New(ErrAutoScopes)
+				// Get code to insert using the code generation operation
+				genLines := []string{}
+				{
+					// Run the code generator, get results as []interface{}
+					results, err := genner.Exec(parts)
+					if err != nil {
+						return output, err
+					}
+
+					// Interpret results as lines of code to insert
+					for _, datum := range results {
+						switch line := datum.(type) {
+						case string:
+							// A single line of generated code
+							genLines = append(genLines, line)
+						case []string:
+							// TODO: implement automatic scope limiters here
+							return output, errors.New(ErrAutoScopes)
+						}
 					}
 				}
-			}
 
-			for _, genLine := range genLines {
-				output = append(output, indentation+genLine)
-			}
+				for _, genLine := range genLines {
+					output = append(output, indentation+genLine)
+				}
 
-			state = StateLookingForEnd
+				state = StateLookingForEnd
+			} else if locRun != nil {
+				genLine := line[locRun[1]:]
+				parts, err := toolparse.ParseListSimple(genLine)
+				if err != nil {
+					return output, err
+				}
+
+				// Run the code generator, ignore results
+				results, err := genner.Exec(parts)
+				log.Warn(results)
+
+				if err != nil {
+					return output, err
+				}
+			}
 
 		}
 		continue // end LblLookForGen

@@ -35,24 +35,38 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	}
 
 	// Function to add a new evaluator (e)
-	/*
-		e := func(name string, function Operation) {
-			fmap[name] = HybridEvaluatorEntry{
-				Tag: EntryIsEvaluator,
-				Op:  function,
-			}
-			fmap[name+"-evaluate"] = HybridEvaluatorEntry{
-				Tag: EntryIsOperation,
-				Op:  function,
-			}
+	e := func(name string, function Operation) {
+		fmap[name] = HybridEvaluatorEntry{
+			Tag: EntryIsEvaluator,
+			Op:  function,
 		}
-	*/
+		fmap[name+"-evaluate"] = HybridEvaluatorEntry{
+			Tag: EntryIsOperation,
+			Op:  function,
+		}
+	}
 
-	//::gen-idea register-all-functions
+	// Function to add a new control structure (c)
+	c := func(name string, function Operation) {
+		fmap[name] = HybridEvaluatorEntry{
+			Tag: EntryIsControl,
+			Op:  function,
+		}
+	}
+
+	// Misc builtins
 	o("format", BuiltinFormat)
 	o("cat", BuiltinCat)
 	o("store", BuiltinStore)
-	//::end
+	o("unfile", BuiltinUnfile)
+	o("slurp", BuiltinSlurp)
+	o("json-encode-one", BuiltinJsonEncodeOne)
+	o("csv:list-to-csvlets", BuiltinListToCsvletsN)
+
+	// Control structures
+	c("do", BuiltinDo)
+
+	e("internal:code-calls-data", BuiltinCodeCallsData)
 
 	exe, err := NewHybridEvaluator(fmap)
 	if err != nil {

@@ -10,8 +10,18 @@ import (
 type HybridEvaluatorEntryTag int
 
 const (
+	// EntryIsOperation indicates that the function expects its arguments to be
+	// evaluated before the function is called.
 	EntryIsOperation HybridEvaluatorEntryTag = iota
+
+	// EntryIsEvaluator indicates that the function does not expect its
+	// arguments to be evaluated, and does not need any evaluator function.
 	EntryIsEvaluator
+
+	// EntryIsControl indicates that the function does not expect its arguments
+	// to be evaluated, but the function should always recieve the default
+	// evaluator as the first parameter implicitly.
+	EntryIsControl
 )
 
 type HybridEvaluatorEntry struct {
@@ -60,11 +70,36 @@ func (evaluator HybridEvaluator) evaluate(
 				}
 			}
 			return entry.Op(results)
+		case EntryIsControl:
+			// Add default evaluator as first argument
+			argsToPass := []interface{}{evaluator}
+
+			// Add remaining arguments
+			argsToPass = append(argsToPass, args[1:]...)
+
+			// Call operation (the function)
+			return entry.Op(argsToPass)
 		}
 		return nil, errors.New("evaluator: unrecognized operation tag")
 	default:
 		return nil, errors.New("evaluator: only string types are supported")
 	}
+}
+
+func (evaluator HybridEvaluator) MakeChild() HybridEvaluator {
+	child := HybridEvaluator{
+		functionsMap: map[string]HybridEvaluatorEntry{},
+	}
+	// TODO: This should eventually be optimised to use a linked list of
+	//       hashmaps. This will require modification of this initializer
+	//       and other constructors. get() and define() operations should be
+	//       used to contain the logic for finding the most recent function
+	//       definition for a specified namevalue down the chain.
+	for key, f := range evaluator.functionsMap {
+		child.functionsMap[key] = f
+	}
+
+	return child
 }
 
 func (evaluator HybridEvaluator) OpEvaluate(
