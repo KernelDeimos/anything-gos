@@ -30,6 +30,11 @@ func main() {
 		return []interface{}{"hello"}, nil
 	})
 
+	// Defining default behaviour (no function found)
+	ii.SetDefaultBehaviour(func(args []interface{}) ([]interface{}, error) {
+		return []interface{}{"not found"}, nil
+	}, interp_a.EntryIsEvaluator)
+
 	// Alias the main executing function; allows you to prepend "exec" to any
 	// line of code with no effect
 	_, err := ii.OpAddOperation([]interface{}{
