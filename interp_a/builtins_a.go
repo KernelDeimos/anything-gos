@@ -3,11 +3,13 @@ package interp_a
 //go:generate genfor-interp-a $GOFILE
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
+	"text/template"
 )
 
 func BuiltinFormat(args []interface{}) ([]interface{}, error) {
@@ -130,4 +132,33 @@ func BuiltinJsonEncodeOne(args []interface{}) ([]interface{}, error) {
 		return []interface{}{"error"}, err
 	}
 	return []interface{}{string(bytes)}, nil
+}
+
+func BuiltinFnTemplate(args []interface{}) ([]interface{}, error) {
+	strArgs := []string{}
+	for _, value := range args {
+		strArgs = append(strArgs, fmt.Sprint(value))
+	}
+	templateText := strings.Join(strArgs, "\n")
+
+	fmt.Println(">>>" + templateText + "<<<")
+
+	t, err := template.New("").Parse(templateText)
+	if err != nil {
+		return nil, err
+	}
+
+	fn := func(args []interface{}) ([]interface{}, error) {
+		buf := bytes.NewBufferString("")
+		err := t.Execute(buf, args)
+		interfaceLines := []interface{}{}
+		strLines := strings.Split(buf.String(), "\n")
+		for _, value := range strLines {
+			fmt.Println(">>" + value + "<<")
+			interfaceLines = append(interfaceLines, value)
+		}
+		return interfaceLines, err
+	}
+
+	return []interface{}{Operation(fn)}, nil
 }

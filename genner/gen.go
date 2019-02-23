@@ -59,6 +59,10 @@ func (indents IndentationSet) TrimAndKeep(subject string) (
 	return
 }
 
+type GennerEnvironment interface {
+	SetInputBuffer([]string)
+}
+
 type TaskGenerator struct {
 	// Line types
 	IsRunLine *regexp.Regexp // "//::declare"
@@ -70,14 +74,22 @@ type TaskGenerator struct {
 
 	// Main parsing operation
 	Exec interp_a.Operation
+
+	// API to environment
+	Env GennerEnvironment
 }
 
+// Genner is a wrapper for the task generator which also provides access to the
+// interpreter.
 type Genner struct {
 	Do     TaskGenerator
 	Interp interp_a.HybridEvaluator
 }
 
-func NewDefaultGenner() Genner {
+func constructGenner(ii interp_a.HybridEvaluator) Genner {
+	env := &GennerEnvironmentDefault{}
+	ii.AddOperation("DATA", env.OpReadInput)
+
 	tg := TaskGenerator{}
 	tg.IsRunLine = regexp.MustCompile(`^\/\/::run`)
 	tg.IsGenLine = regexp.MustCompile(`^\/\/::gen`)
@@ -87,8 +99,8 @@ func NewDefaultGenner() Genner {
 		runes: []rune{' ', '\t'},
 	}
 
-	ii := interp_a.InterpreterFactoryA{}.MakeEmpty()
 	tg.Exec = ii.OpEvaluate
+	tg.Env = env
 
 	return Genner{
 		Do:     tg,
@@ -96,23 +108,14 @@ func NewDefaultGenner() Genner {
 	}
 }
 
+func NewDefaultGenner() Genner {
+	ii := interp_a.InterpreterFactoryA{}.MakeEmpty()
+	return constructGenner(ii)
+}
+
 func NewGennerWithBuiltinsTest() Genner {
-	tg := TaskGenerator{}
-	tg.IsRunLine = regexp.MustCompile(`^\/\/::run`)
-	tg.IsGenLine = regexp.MustCompile(`^\/\/::gen`)
-	tg.IsEndLine = regexp.MustCompile(`^\/\/::end`)
-
-	tg.Indents = IndentationSet{
-		runes: []rune{' ', '\t'},
-	}
-
 	ii := interp_a.InterpreterFactoryA{}.MakeExec()
-	tg.Exec = ii.OpEvaluate
-
-	return Genner{
-		Do:     tg,
-		Interp: ii,
-	}
+	return constructGenner(ii)
 }
 
 func (genner TaskGenerator) GenerateUpdateFile(
@@ -196,10 +199,16 @@ func (genner TaskGenerator) GenerateUpdateFile(
 func (genner TaskGenerator) ProcessLinesAndInsertGeneratedCode(
 	lines []string) ([]string, error) {
 
+	// Code to output
 	output := []string{}
+
+	// Buffer for copying lines of code (i.e. templates)
+	buffer := []string{}
+	var execLine string // command to run after copying code
 
 	const StateLookingForGen int = 1
 	const StateLookingForEnd int = 2
+	const StateCopyDataBlock int = 3
 	state := StateLookingForGen
 
 	for _, line := range lines {
@@ -208,6 +217,8 @@ func (genner TaskGenerator) ProcessLinesAndInsertGeneratedCode(
 		case StateLookingForGen:
 			goto LblLookForGen
 		case StateLookingForEnd:
+			fallthrough
+		case StateCopyDataBlock:
 			goto LblLookForEnd
 		}
 
@@ -226,6 +237,7 @@ func (genner TaskGenerator) ProcessLinesAndInsertGeneratedCode(
 			locRun := genner.IsRunLine.FindStringIndex(line)
 			locGen := genner.IsGenLine.FindStringIndex(line)
 			if locGen != nil {
+				log.Info("gen location found")
 				// Get one or more tokens after "//::gen", or report error
 				genLine := line[locGen[1]:]
 				parts, err := toolparse.ParseListSimple(genLine)
@@ -261,19 +273,11 @@ func (genner TaskGenerator) ProcessLinesAndInsertGeneratedCode(
 
 				state = StateLookingForEnd
 			} else if locRun != nil {
-				genLine := line[locRun[1]:]
-				parts, err := toolparse.ParseListSimple(genLine)
-				if err != nil {
-					return output, err
-				}
-
-				// Run the code generator, ignore results
-				results, err := genner.Exec(parts)
-				log.Warn(results)
-
-				if err != nil {
-					return output, err
-				}
+				log.Info("run location found")
+				buffer = []string{}
+				execLine = line[locRun[1]:]
+				state = StateCopyDataBlock
+				continue
 			}
 
 		}
@@ -283,9 +287,39 @@ func (genner TaskGenerator) ProcessLinesAndInsertGeneratedCode(
 		{
 			line, indentation := genner.Indents.TrimAndKeep(line)
 			if genner.IsEndLine.MatchString(line) {
+				log.Info("ending")
+				// If state was CopyDataBlock, execute the command now
+				if state == StateCopyDataBlock {
+					// Update buffer in interpreter environment
+					genner.Env.SetInputBuffer(buffer)
+					log.Info("here")
+					parts, err := toolparse.ParseListSimple(execLine)
+					if err != nil {
+						return output, err
+					}
+
+					// Run the code generator
+					results, err := genner.Exec(parts)
+
+					// Print results to screen
+					// (results do not go in the source file, because mixing
+					//  output text with input text is probably bad         )
+					log.Warn(results)
+
+					if err != nil {
+						return output, err
+					}
+				}
 				// Add end indicator to output to keep it in the file
 				output = append(output, indentation+line)
 				state = StateLookingForGen
+			} else if state == StateCopyDataBlock {
+				// This else block means we're in the mode where we copy lines
+				// of data (i.e. block under "::run" comment)
+				buffer = append(buffer, line)
+
+				// Also we should keep these lines in the file
+				output = append(output, indentation+line)
 			}
 		}
 		continue // end lblLookForEnd

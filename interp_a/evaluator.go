@@ -45,11 +45,11 @@ func (evaluator HybridEvaluator) runEntry(
 	switch entry.Tag {
 	case EntryIsEvaluator:
 		// Don't need to evaluate anything - pass all args literally
-		return entry.Op(args[1:])
+		return entry.Op(args)
 	case EntryIsOperation:
 		// Need to evaluate arguments before calling
 		results := []interface{}{}
-		for _, arg := range args[1:] {
+		for _, arg := range args {
 			switch argToEvaluate := arg.(type) {
 			case []interface{}:
 				theseResults, err := evaluator.evaluate(
@@ -76,7 +76,16 @@ func (evaluator HybridEvaluator) runEntry(
 		// Call operation (the function)
 		return entry.Op(argsToPass)
 	}
-	return nil, errors.New("evaluator: unrecognized operation tag")
+	return nil, errors.New("evaluator: unrecognized operation tag: " +
+		fmt.Sprint(entry.Tag))
+}
+
+type ErrorFunctionNotFound struct {
+	FunctionName string
+}
+
+func (err ErrorFunctionNotFound) Error() string {
+	return fmt.Sprintf("could not find function '%s'", err.FunctionName)
 }
 
 func (evaluator HybridEvaluator) evaluate(
@@ -91,12 +100,12 @@ func (evaluator HybridEvaluator) evaluate(
 		entry, exists := evaluator.functionsMap[opToRun]
 		if !exists {
 			if evaluator.defaultBehaviour == nil {
-				return nil, fmt.Errorf("could not find function '%s'", opToRun)
+				return nil, ErrorFunctionNotFound{FunctionName: opToRun}
 			} else {
 				return evaluator.runEntry(*(evaluator.defaultBehaviour), args)
 			}
 		}
-		return evaluator.runEntry(entry, args)
+		return evaluator.runEntry(entry, args[1:])
 
 	default:
 		return nil, errors.New("evaluator: only string types are supported")
@@ -105,7 +114,8 @@ func (evaluator HybridEvaluator) evaluate(
 
 func (evaluator HybridEvaluator) MakeChild() HybridEvaluator {
 	child := HybridEvaluator{
-		functionsMap: map[string]HybridEvaluatorEntry{},
+		functionsMap:     map[string]HybridEvaluatorEntry{},
+		defaultBehaviour: evaluator.defaultBehaviour,
 	}
 	// TODO: This should eventually be optimised to use a linked list of
 	//       hashmaps. This will require modification of this initializer
