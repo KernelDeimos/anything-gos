@@ -55,7 +55,9 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	}
 
 	// Misc builtins
+	o("int", BuiltinInt)
 	o("format", BuiltinFormat)
+	o("ditto", BuiltinCatRepeat)
 	o("cat", BuiltinCat)
 	o("store", BuiltinStore)
 	o("unfile", BuiltinUnfile)
@@ -63,6 +65,7 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	o("json-encode-one", BuiltinJsonEncodeOne)
 	o("csv:list-to-csvlets", BuiltinListToCsvletsN)
 	o("fn-gotmpl", BuiltinFnTemplate)
+	o("tie", BuiltinTie)
 
 	// Control structures
 	c("do", BuiltinDo)

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -32,10 +33,50 @@ func BuiltinFormat(args []interface{}) ([]interface{}, error) {
 	return []interface{}{result}, nil
 }
 
+func BuiltinInt(args []interface{}) ([]interface{}, error) {
+	result := []interface{}{}
+	for _, arg := range args {
+		iVal, err := strconv.ParseInt(fmt.Sprint(arg), 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, int(iVal))
+	}
+	return result, nil
+}
+
+func BuiltinTie(args []interface{}) ([]interface{}, error) {
+	return []interface{}{args}, nil
+}
+
 func BuiltinCat(args []interface{}) ([]interface{}, error) {
 	result := ""
 	for _, arg := range args {
 		result = result + fmt.Sprint(arg)
+	}
+	return []interface{}{result}, nil
+}
+
+func BuiltinCatRepeat(args []interface{}) ([]interface{}, error) {
+	//::gen verify-args ditto times int
+	if len(args) < 1 {
+		return nil, errors.New("ditto requires at least 1 arguments")
+	}
+
+	var times int
+	{
+		var ok bool
+		times, ok = args[0].(int)
+		if !ok {
+			return nil, errors.New("ditto: argument 0: times; must be type int")
+		}
+	}
+	//::end
+	result := ""
+	for i := 0; i < times; i++ {
+		for _, arg := range args[1:] {
+			result = result + fmt.Sprint(arg)
+		}
 	}
 	return []interface{}{result}, nil
 }
