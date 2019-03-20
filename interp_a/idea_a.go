@@ -69,6 +69,7 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 
 	// Control structures
 	c("do", BuiltinDo)
+	c("apply", BuiltinApply)
 
 	e("internal:code-calls-data", BuiltinCodeCallsData)
 

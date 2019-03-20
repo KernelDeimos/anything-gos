@@ -38,7 +38,7 @@ type HybridEvaluator struct {
 	defaultBehaviour *HybridEvaluatorEntry
 }
 
-func (evaluator HybridEvaluator) runEntry(
+func (evaluator HybridEvaluator) RunEntry(
 	entry HybridEvaluatorEntry,
 	args []interface{},
 ) ([]interface{}, error) {
@@ -71,7 +71,7 @@ func (evaluator HybridEvaluator) runEntry(
 		argsToPass := []interface{}{evaluator}
 
 		// Add remaining arguments
-		argsToPass = append(argsToPass, args[1:]...)
+		argsToPass = append(argsToPass, args...)
 
 		// Call operation (the function)
 		return entry.Op(argsToPass)
@@ -88,28 +88,47 @@ func (err ErrorFunctionNotFound) Error() string {
 	return fmt.Sprintf("could not find function '%s'", err.FunctionName)
 }
 
-func (evaluator HybridEvaluator) evaluate(
-	args []interface{},
-) ([]interface{}, error) {
+func (evaluator HybridEvaluator) GetEntry(args []interface{},
+) (string, HybridEvaluatorEntry, bool, error) {
+	nilEntry := HybridEvaluatorEntry{}
 	if len(args) == 0 {
-		return nil, nil
+		return "", nilEntry, false, nil
 	}
 	first := args[0]
 	switch opToRun := first.(type) {
 	case string:
 		entry, exists := evaluator.functionsMap[opToRun]
 		if !exists {
-			if evaluator.defaultBehaviour == nil {
-				return nil, ErrorFunctionNotFound{FunctionName: opToRun}
-			} else {
-				return evaluator.runEntry(*(evaluator.defaultBehaviour), args)
-			}
+			return opToRun, nilEntry, false, nil
 		}
-		return evaluator.runEntry(entry, args[1:])
+		return opToRun, entry, true, nil
 
 	default:
-		return nil, errors.New("evaluator: only string types are supported")
+		return "", nilEntry, false, errors.New(
+			"evaluator: only string types are supported")
 	}
+}
+
+func (evaluator HybridEvaluator) evaluate(
+	args []interface{},
+) ([]interface{}, error) {
+	if len(args) == 0 {
+		return nil, nil
+	}
+
+	name, entry, exists, err := evaluator.GetEntry(args)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		if evaluator.defaultBehaviour == nil {
+			return nil, ErrorFunctionNotFound{FunctionName: name}
+		} else {
+			return evaluator.RunEntry(*(evaluator.defaultBehaviour), args)
+		}
+	}
+	return evaluator.RunEntry(entry, args[1:])
+
 }
 
 func (evaluator HybridEvaluator) MakeChild() HybridEvaluator {
