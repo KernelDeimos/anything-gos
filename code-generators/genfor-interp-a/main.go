@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/KernelDeimos/anything-gos/genner"
+	"github.com/KernelDeimos/anything-gos/interp_a"
 	"github.com/KernelDeimos/gottagofast/utilstr"
 )
 
@@ -26,6 +27,14 @@ func main() {
 	files := os.Args[1:]
 
 	G := genner.NewGennerWithBuiltinsTest()
+
+	if len(files) >= 2 && files[0] == "--hackprefix" {
+		logrus.Warn("Interpreting next argument as comment prefx")
+		ii := interp_a.InterpreterFactoryA{}.MakeExec()
+
+		G = genner.NewGennerHackyRegexCat(ii, files[1])
+		files = files[2:]
+	}
 
 	// Note: in the future, perhaps instead of writing the function signature
 	//       around every operation, there could be a template. There should
@@ -194,6 +203,41 @@ func main() {
 
 			result, _ := utilstr.AtomicReplace(args0, replacements)
 			output = append(output, result)
+		}
+
+		return output, nil
+	})
+
+	G.Interp.AddOperation("repeat", func(
+		args []interface{}) ([]interface{}, error) {
+		if len(args) < 1 {
+			return nil, errors.New("repeat requires at least 1 arguments")
+		}
+
+		var args0 int
+		{
+			var ok bool
+			args0, ok = args[0].(int)
+			if !ok {
+				return nil, errors.New(
+					"repeat: argument 0: args0; must be type int")
+			}
+		}
+
+		var args1 string
+		{
+			var ok bool
+			args1, ok = args[1].(string)
+			if !ok {
+				return nil, errors.New(
+					"repeat: argument 1: args1; must be type string")
+			}
+		}
+
+		output := []interface{}{}
+
+		for i := 0; i < args0; i++ {
+			output = append(output, args1)
 		}
 
 		return output, nil
