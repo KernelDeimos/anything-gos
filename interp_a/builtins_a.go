@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"strconv"
 	"strings"
 	"text/template"
 )
@@ -33,16 +32,8 @@ func BuiltinFormat(args []interface{}) ([]interface{}, error) {
 	return []interface{}{result}, nil
 }
 
-func BuiltinInt(args []interface{}) ([]interface{}, error) {
-	result := []interface{}{}
-	for _, arg := range args {
-		iVal, err := strconv.ParseInt(fmt.Sprint(arg), 10, 32)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, int(iVal))
-	}
-	return result, nil
+func BuiltinPassthrough(args []interface{}) ([]interface{}, error) {
+	return args, nil
 }
 
 func BuiltinTie(args []interface{}) ([]interface{}, error) {

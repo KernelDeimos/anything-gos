@@ -108,6 +108,29 @@ func constructGenner(ii interp_a.HybridEvaluator) Genner {
 	}
 }
 
+func NewGennerHackyRegexCat(ii interp_a.HybridEvaluator,
+	prefix string) Genner {
+	env := &GennerEnvironmentDefault{}
+	ii.AddOperation("DATA", env.OpReadInput)
+
+	tg := TaskGenerator{}
+	tg.IsRunLine = regexp.MustCompile(`^` + prefix + `::run`)
+	tg.IsGenLine = regexp.MustCompile(`^` + prefix + `::gen`)
+	tg.IsEndLine = regexp.MustCompile(`^` + prefix + `::end`)
+
+	tg.Indents = IndentationSet{
+		runes: []rune{' ', '\t'},
+	}
+
+	tg.Exec = ii.OpEvaluate
+	tg.Env = env
+
+	return Genner{
+		Do:     tg,
+		Interp: ii,
+	}
+}
+
 func NewDefaultGenner() Genner {
 	ii := interp_a.InterpreterFactoryA{}.MakeEmpty()
 	return constructGenner(ii)

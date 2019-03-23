@@ -55,7 +55,6 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	}
 
 	// Misc builtins
-	o("int", BuiltinInt)
 	o("format", BuiltinFormat)
 	o("ditto", BuiltinCatRepeat)
 	o("cat", BuiltinCat)
@@ -67,9 +66,18 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	o("fn-gotmpl", BuiltinFnTemplate)
 	o("tie", BuiltinTie)
 
+	o("int", BuiltinInt)
+	o("<", BuiltinLess)
+	o("+", BuiltinAdd)
+	o("-", BuiltinSubtract)
+	o("*", BuiltinMultiply)
+	o("/", BuiltinDivide)
+	o("just", BuiltinPassthrough)
+
 	// Control structures
 	c("do", BuiltinDo)
 	c("apply", BuiltinApply)
+	c("if", BuiltinIf)
 
 	e("internal:code-calls-data", BuiltinCodeCallsData)
 

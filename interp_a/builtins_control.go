@@ -116,10 +116,10 @@ func BuiltinDo(args []interface{}) ([]interface{}, error) {
 				continue
 			}
 			// Evaluate list
-			_, err := eval.OpEvaluate(value)
+			result, err := eval.OpEvaluate(value)
 			// Check for error
 			if err != nil {
-				return rs.Value, err
+				return resultForError("do", value, result, err)
 			}
 			// Check for return
 			if rs.Ready {
@@ -144,9 +144,14 @@ func BuiltinApply(args []interface{}) ([]interface{}, error) {
 	eval := evalMaker.MakeChild()
 
 	ag := MakeArgGetter()
-	input, ok := args[1].([]interface{})
+	inputExpr, ok := args[1].([]interface{})
 	if !ok {
 		return nil, errors.New("Input is not okay")
+	}
+
+	input, err := evalMaker.OpEvaluate(inputExpr)
+	if err != nil {
+		return inputExpr, err
 	}
 
 	ag.Value = input
@@ -159,4 +164,69 @@ func BuiltinApply(args []interface{}) ([]interface{}, error) {
 	}
 
 	return eval.OpEvaluate(applyTarget)
+}
+
+func BuiltinIf(args []interface{}) ([]interface{}, error) {
+	if len(args) < 3 {
+		return args, errors.New("if requires a condition and function")
+	}
+
+	condition := args[1]
+	eval := args[0].(HybridEvaluator)
+
+	exprIfTrue, valid1 := args[2].([]interface{})
+	exprIfFalse, valid2 := args[3].([]interface{})
+	exprAlways := args[4:]
+
+	if !valid1 || !valid2 {
+		return nil, errors.New("if expects two expressions to proceed")
+	}
+
+	var conditionValue int
+
+	switch c := condition.(type) {
+	case []interface{}:
+		result, err := eval.OpEvaluate(c)
+		if err != nil {
+			return nil, err
+		}
+		if len(result) < 1 {
+			return nil, errors.New("conditions must evaluate to integers")
+		}
+		var ok bool
+		conditionValue, ok = result[0].(int)
+		if !ok {
+			return nil, errors.New("conditions must evaluate to integers")
+		}
+
+	case int:
+		conditionValue = c
+
+	default:
+		return nil, errors.New("condition must be integer or expression")
+	}
+
+	finalResult := []interface{}{}
+
+	// False condition
+	if conditionValue == 0 {
+		result, err := eval.OpEvaluate(exprIfFalse)
+		if err != nil {
+			return result, err
+		}
+		finalResult = append(finalResult, result...)
+	} else {
+		// True condition... (I really want to put the comment above "else" but)
+		result, err := eval.OpEvaluate(exprIfTrue)
+		if err != nil {
+			return result, err
+		}
+		finalResult = append(finalResult, result...)
+	}
+
+	alwaysResult, err := eval.OpEvaluate(exprAlways)
+	if alwaysResult != nil {
+		finalResult = append(finalResult, alwaysResult...)
+	}
+	return finalResult, err
 }
