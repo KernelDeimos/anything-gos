@@ -5,6 +5,7 @@ package interp_a
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type HybridEvaluatorEntryTag int
@@ -36,6 +37,7 @@ type HybridEvaluatorEntry struct {
 type HybridEvaluator struct {
 	functionsMap     map[string]HybridEvaluatorEntry
 	defaultBehaviour *HybridEvaluatorEntry
+	mutexFunctionMap *sync.RWMutex
 }
 
 func (evaluator HybridEvaluator) RunEntry(
@@ -106,7 +108,9 @@ func (evaluator HybridEvaluator) GetEntry(args []interface{},
 				Op:  evaluator.OpListOperations,
 			}, true, nil
 		}
+		evaluator.mutexFunctionMap.RLock()
 		entry, exists := evaluator.functionsMap[opToRun]
+		evaluator.mutexFunctionMap.RUnlock()
 		if !exists {
 			return opToRun, nilEntry, false, nil
 		}
@@ -150,7 +154,11 @@ func (evaluator HybridEvaluator) MakeChild() HybridEvaluator {
 	child := HybridEvaluator{
 		functionsMap:     map[string]HybridEvaluatorEntry{},
 		defaultBehaviour: evaluator.defaultBehaviour,
+		mutexFunctionMap: &sync.RWMutex{},
 	}
+
+	evaluator.mutexFunctionMap.RLock()
+	defer evaluator.mutexFunctionMap.RUnlock()
 	// TODO: This should eventually be optimised to use a linked list of
 	//       hashmaps. This will require modification of this initializer
 	//       and other constructors. get() and define() operations should be
@@ -180,6 +188,9 @@ func (evaluator HybridEvaluator) OpEvaluate(
 func (evaluator HybridEvaluator) AddOperation(
 	name string, function Operation,
 ) {
+	evaluator.mutexFunctionMap.Lock()
+	defer evaluator.mutexFunctionMap.Unlock()
+
 	evaluator.functionsMap[name] = HybridEvaluatorEntry{
 		Tag: EntryIsOperation,
 		Op:  function,
@@ -193,6 +204,9 @@ func (evaluator HybridEvaluator) AddOperation(
 func (evaluator HybridEvaluator) AddEvaluator(
 	name string, function Operation,
 ) {
+	evaluator.mutexFunctionMap.Lock()
+	defer evaluator.mutexFunctionMap.Unlock()
+
 	evaluator.functionsMap[name+"-evaluate"] = HybridEvaluatorEntry{
 		Tag: EntryIsOperation,
 		Op:  function,
@@ -206,6 +220,9 @@ func (evaluator HybridEvaluator) AddEvaluator(
 func (evaluator HybridEvaluator) GetOperation(
 	name string,
 ) (Operation, HybridEvaluatorEntryTag, bool) {
+	evaluator.mutexFunctionMap.RLock()
+	defer evaluator.mutexFunctionMap.RUnlock()
+
 	entry, found := evaluator.functionsMap[name]
 	if !found {
 		return nil, -1, false
@@ -216,6 +233,9 @@ func (evaluator HybridEvaluator) GetOperation(
 func (evaluator HybridEvaluator) OpListOperations(
 	args []interface{},
 ) ([]interface{}, error) {
+	evaluator.mutexFunctionMap.RLock()
+	defer evaluator.mutexFunctionMap.RUnlock()
+
 	entries := []interface{}{}
 	for entry := range evaluator.functionsMap {
 		entries = append(entries, interface{}(entry))
@@ -310,6 +330,7 @@ func NewHybridEvaluator(
 		defaultBehaviour: &HybridEvaluatorEntry{
 			Tag: EntryIsNone,
 		},
+		mutexFunctionMap: &sync.RWMutex{},
 	}
 
 	return evaluator, nil
