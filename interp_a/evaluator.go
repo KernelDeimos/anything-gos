@@ -100,6 +100,12 @@ func (evaluator HybridEvaluator) GetEntry(args []interface{},
 	first := args[0]
 	switch opToRun := first.(type) {
 	case string:
+		if opToRun == "__debug_listmethods" {
+			return opToRun, HybridEvaluatorEntry{
+				Tag: EntryIsOperation,
+				Op:  evaluator.OpListOperations,
+			}, true, nil
+		}
 		entry, exists := evaluator.functionsMap[opToRun]
 		if !exists {
 			return opToRun, nilEntry, false, nil
@@ -205,6 +211,16 @@ func (evaluator HybridEvaluator) GetOperation(
 		return nil, -1, false
 	}
 	return entry.Op, entry.Tag, true
+}
+
+func (evaluator HybridEvaluator) OpListOperations(
+	args []interface{},
+) ([]interface{}, error) {
+	entries := []interface{}{}
+	for entry := range evaluator.functionsMap {
+		entries = append(entries, interface{}(entry))
+	}
+	return entries, nil
 }
 
 func (evaluator HybridEvaluator) OpAddOperation(
