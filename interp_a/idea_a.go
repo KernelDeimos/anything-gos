@@ -13,6 +13,7 @@ func (ifa InterpreterFactoryA) MakeEmpty() HybridEvaluator {
 	// Bind evaluator mutators
 	exe.AddOperation(":", exe.OpAddOperation)
 	exe.AddOperation("$", exe.OpGetOperation)
+	exe.AddOperation("evaluator:", exe.OpAddEvaluator)
 
 	return exe
 }
@@ -90,6 +91,7 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	// Bind evaluator mutators
 	exe.AddOperation(":", exe.OpAddOperation)
 	exe.AddOperation("$", exe.OpGetOperation)
+	exe.AddOperation("evaluator:", exe.OpAddEvaluator)
 
 	return exe
 }
