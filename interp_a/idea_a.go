@@ -63,6 +63,7 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	o("unfile", BuiltinUnfile)
 	o("slurp", BuiltinSlurp)
 	o("json-encode-one", BuiltinJsonEncodeOne)
+	o("json-decode-one", BuiltinJsonDecodeOne)
 	o("csv:list-to-csvlets", BuiltinListToCsvletsN)
 	o("fn-gotmpl", BuiltinFnTemplate)
 	o("tie", BuiltinTie)

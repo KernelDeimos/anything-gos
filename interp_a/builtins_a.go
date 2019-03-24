@@ -166,6 +166,31 @@ func BuiltinJsonEncodeOne(args []interface{}) ([]interface{}, error) {
 	return []interface{}{string(bytes)}, nil
 }
 
+func BuiltinJsonDecodeOne(args []interface{}) ([]interface{}, error) {
+	//::gen verify-args json-decode-one jsonText string
+	if len(args) < 1 {
+		return nil, errors.New("json-decode-one requires at least 1 arguments")
+	}
+
+	var jsonText string
+	{
+		var ok bool
+		jsonText, ok = args[0].(string)
+		if !ok {
+			return nil, errors.New("json-decode-one: argument 0: jsonText; must be type string")
+		}
+	}
+	//::end
+
+	var result interface{}
+
+	err := json.Unmarshal([]byte(jsonText), &result)
+	if err != nil {
+		return []interface{}{"error"}, err
+	}
+	return []interface{}{result}, nil
+}
+
 func BuiltinFnTemplate(args []interface{}) ([]interface{}, error) {
 	strArgs := []string{}
 	for _, value := range args {
