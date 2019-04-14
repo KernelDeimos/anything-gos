@@ -230,3 +230,49 @@ func BuiltinIf(args []interface{}) ([]interface{}, error) {
 	}
 	return finalResult, err
 }
+
+func BuiltinForeach(args []interface{}) ([]interface{}, error) {
+	if len(args) < 2 {
+		return args, errors.New("foreach requires a list and identifier")
+	}
+
+	stmtToGetListToIterate := args[1]
+	eval := args[0].(HybridEvaluator)
+	nameArg := args[2]
+
+	var name string
+
+	name, ok := nameArg.(string)
+	if !ok {
+		return args, errors.New("name must be string")
+	}
+
+	exprAlways := args[3:]
+
+	var listToIterate []interface{}
+
+	switch c := stmtToGetListToIterate.(type) {
+	case []interface{}:
+		result, err := eval.OpEvaluate(c)
+		if err != nil {
+			return nil, err
+		}
+		listToIterate = result
+	default:
+		return nil, errors.New("source must be an expression")
+	}
+
+	finalResult := []interface{}{}
+
+	for _, item := range listToIterate {
+		eval.AddOperation(name, func(args []interface{}) ([]interface{}, error) {
+			return []interface{}{item}, nil
+		})
+		result, err := eval.OpEvaluate(exprAlways)
+		if err != nil {
+			return result, err
+		}
+		finalResult = append(finalResult, result)
+	}
+	return finalResult, nil
+}

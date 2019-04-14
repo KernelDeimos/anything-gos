@@ -80,6 +80,7 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	c("do", BuiltinDo)
 	c("apply", BuiltinApply)
 	c("if", BuiltinIf)
+	c("foreach", BuiltinForeach)
 
 	e("internal:code-calls-data", BuiltinCodeCallsData)
 
