@@ -143,10 +143,18 @@ func (evaluator HybridEvaluator) evaluate(
 		if evaluator.defaultBehaviour == nil {
 			return nil, ErrorFunctionNotFound{FunctionName: name}
 		} else {
-			return evaluator.RunEntry(*(evaluator.defaultBehaviour), args)
+			result, err := evaluator.RunEntry(*(evaluator.defaultBehaviour), args)
+			if err != nil {
+				return resultForError(name, args, result, err)
+			}
+			return result, err
 		}
 	}
-	return evaluator.RunEntry(entry, args[1:])
+	result, err := evaluator.RunEntry(entry, args[1:])
+	if err != nil {
+		return resultForError(name, args, result, err)
+	}
+	return result, err
 
 }
 
