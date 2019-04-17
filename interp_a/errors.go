@@ -8,11 +8,11 @@ type ErrorType struct {
 }
 
 func (et ErrorType) Error() string {
-	return et.nextError.Error()
+	return et.info + ": " + et.nextError.Error()
 }
 
 func (et ErrorType) String() string {
-	return "trace(" + et.info + "):"
+	return "trace(" + et.info + "): " + et.nextError.Error()
 }
 
 func (et ErrorType) Return() ([]interface{}, error) {
@@ -22,7 +22,7 @@ func (et ErrorType) Return() ([]interface{}, error) {
 		et.inputArgs,
 		"->",
 		et.nextArgs,
-	}, et.nextError
+	}, et
 }
 
 func resultForError(info string, args, nextArgs []interface{}, ein error,

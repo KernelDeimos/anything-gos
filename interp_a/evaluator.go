@@ -79,7 +79,7 @@ func (evaluator HybridEvaluator) RunEntry(
 		return entry.Op(argsToPass)
 
 	case EntryIsNone:
-		return args, errors.New("not found")
+		return args, errors.New("entry not found")
 	}
 	return nil, errors.New("evaluator: unrecognized operation tag: " +
 		fmt.Sprint(entry.Tag))
