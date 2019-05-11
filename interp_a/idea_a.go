@@ -60,6 +60,7 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	o("ditto", BuiltinCatRepeat)
 	o("cat", BuiltinCat)
 	o("store", BuiltinStore)
+	o("strings", BuiltinStrings)
 	o("unfile", BuiltinUnfile)
 	o("slurp", BuiltinSlurp)
 	o("json-encode-one", BuiltinJsonEncodeOne)

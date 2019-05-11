@@ -32,6 +32,15 @@ func BuiltinFormat(args []interface{}) ([]interface{}, error) {
 	return []interface{}{result}, nil
 }
 
+func BuiltinStrings(args []interface{}) ([]interface{}, error) {
+	stringArgs := []string{}
+	for _, arg := range args {
+		stringArgs = append(stringArgs, fmt.Sprint(arg))
+	}
+
+	return []interface{}{stringArgs}, nil
+}
+
 func BuiltinPassthrough(args []interface{}) ([]interface{}, error) {
 	return args, nil
 }

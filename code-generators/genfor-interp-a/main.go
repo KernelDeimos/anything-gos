@@ -41,6 +41,69 @@ func main() {
 	//       also be a corresponding editor extension to display the function
 	//       so the programmer doesn't need to look through different files.
 
+	G.Interp.AddOperation("gen-binding", func(
+		args []interface{}) ([]interface{}, error) {
+
+		result := []interface{}{}
+
+		//::gen verify-args gen-binding iname string fname string call string args2 []string returns []string
+		if len(args) < 5 {
+			return nil, errors.New("gen-binding requires at least 5 arguments")
+		}
+
+		var iname string
+		var fname string
+		var call string
+		var args2 []string
+		var returns []string
+		{
+			var ok bool
+			iname, ok = args[0].(string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 0: iname; must be type string")
+			}
+			fname, ok = args[1].(string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 1: fname; must be type string")
+			}
+			call, ok = args[2].(string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 2: call; must be type string")
+			}
+			args2, ok = args[3].([]string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 3: args2; must be type []string")
+			}
+			returns, ok = args[4].([]string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 4: returns; must be type []string")
+			}
+		}
+		//::end
+
+		toCheck := [][]string{}  // size: [n][2]
+		toReturn := [][]string{} // size: [n][2]
+
+		for i := 0; i < len(args2); i += 2 {
+			varName := args2[i]
+			varType := args2[i+1]
+			toCheck = append(toCheck, []string{varName, varType})
+		}
+
+		for i := 0; i < len(returns); i += 2 {
+			varName := returns[i]
+			varType := returns[i+1]
+			toReturn = append(toReturn, []string{varName, varType})
+		}
+
+		GenerateBinding(
+			iname, fname, call, toCheck, toReturn, &result)
+
+		logrus.Debug("it's okay; everything will be fine...")
+
+		return result, nil
+	})
+
 	G.Interp.AddOperation("verify-args", func(
 		args []interface{}) ([]interface{}, error) {
 
@@ -63,7 +126,7 @@ func main() {
 		}
 
 		// function name, for descriptive error messages
-		fname := args[0]
+		fname := args[0].(string)
 
 		toCheck := [][]string{} // size: [n][2]
 
@@ -73,56 +136,9 @@ func main() {
 			toCheck = append(toCheck, []string{varName, varType})
 		}
 
-		printf(&result, "if len(args) < %d {", len(toCheck))
-		printf(&result, "\treturn nil, "+
-			`errors.New("%s requires at least %d arguments")`,
-			fname, len(toCheck))
-		printf(&result, "}\n")
-
-		for _, item := range toCheck {
-			var typName string
-			switch item[1] {
-			case "integer":
-				typName = "int"
-			default:
-				typName = item[1]
-			}
-			result = append(result, fmt.Sprintf("var %s %s", item[0], typName))
-		}
-
-		result = append(result, "{")
-		result = append(result, "\tvar ok bool")
-		for i, item := range toCheck {
-			vName := item[0]
-			vType := item[1]
-
-			switch vType {
-			case "integer":
-				result = append(result, "\tvar err error")
-				printf(&result, "\tvar %sStr string", vName)
-				printf(&result, "\t%sStr, ok = args[%d].(string)", vName, i)
-				printf(&result, "\tif !ok {")
-				printf(&result, "\t\treturn nil, "+
-					`errors.New("%s: argument %d: %s; must be type %s")`,
-					fname, i, vName, "int(string)")
-				printf(&result, "\t}")
-				printf(&result, "\t%s, err = strconv.Atoi(%sStr)", vName, vName)
-				printf(&result, "\tif err != nil {")
-				printf(&result, "\t\treturn nil, err")
-				printf(&result, "\t}")
-			default:
-				printf(&result, "\t%s, ok = args[%d].(%s)", vName, i, vType)
-				printf(&result, "\tif !ok {")
-				printf(&result, "\t\treturn nil, "+
-					`errors.New("%s: argument %d: %s; must be type %s")`,
-					fname, i, vName, vType)
-				printf(&result, "\t}")
-			}
-		}
-		result = append(result, "}")
+		GenerateVerifyArgs(fname, toCheck, &result)
 
 		return result, nil
-
 	})
 
 	G.Interp.AddOperation("ucwords", func(

@@ -1,0 +1,39 @@
+
+	//::gen verify-args json-decode-one jsonText string
+	if len(args) < 1 {
+		return nil, errors.New("json-decode-one requires at least 1 arguments")
+	}
+
+	var jsonText string
+	{
+		var ok bool
+		jsonText, ok = args[0].(string)
+		if !ok {
+			return nil, errors.New("json-decode-one: argument 0: jsonText; must be type string")
+		}
+	}
+    //::end
+
+    //::gen gen-binding ii json-decode-one DoDecode (strings jsonText string) (strings a _ b _ c error)
+    ii.AddOperation("json-decode-one", func(
+	args []interface{}) ([]interface{}, error) {
+
+    if len(args) < 1 {
+    	return nil, errors.New("json-decode-one requires at least 1 arguments")
+    }
+
+    var jsonText string
+    {
+    	var ok bool
+    	jsonText, ok = args[0].(string)
+    	if !ok {
+    		return nil, errors.New("json-decode-one: argument 0: jsonText; must be type string")
+    	}
+    }
+    a,b,c := DoDecode(jsonText)
+    if c != nil {
+    	return nil, c
+    }
+    return []interface{}{a,b}, nil
+    })
+    //::end
