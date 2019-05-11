@@ -101,16 +101,16 @@ func (rs *ArgGetter) Bind(eval HybridEvaluator) {
 // do (return-push (function-a)) (return-push (function-b)) (return)
 func BuiltinDo(args []interface{}) ([]interface{}, error) {
 	evalMaker := args[0].(HybridEvaluator)
-	eval := evalMaker.MakeChild()
 
 	rs := MakeReturnState()
-	rs.Bind(eval)
 
 	for _, arg := range args[1:] {
 		switch value := arg.(type) {
 		case string:
 			// Ignore string (this is a comment)
 		case []interface{}:
+			eval := evalMaker.MakeChild()
+			rs.Bind(eval)
 			// Skip empty list
 			if len(value) < 1 {
 				continue
