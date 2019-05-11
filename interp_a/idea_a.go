@@ -82,6 +82,7 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	c("if", BuiltinIf)
 	c("foreach", BuiltinForeach)
 
+	e("d", BuiltinPassthrough)
 	e("internal:code-calls-data", BuiltinCodeCallsData)
 
 	exe, err := NewHybridEvaluator(fmap)
