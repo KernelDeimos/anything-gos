@@ -2,66 +2,65 @@ package main
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
-func GenerateVerifyArgs(
+func GenerateVerifyLuaArgs(
 	fname string, toCheck [][]string,
 	result *[]interface{},
 ) {
 
-	printf(result, "if len(args) < %d {", len(toCheck))
-	printf(result, "\treturn nil, "+
-		`errors.New("%s requires at least %d arguments")`,
-		fname, len(toCheck))
+	printf(result, "if L.GetTop() < %d {", len(toCheck))
+	printf(result, `L.RaiseError("%s requires at least %d arguments")`,
+		fname, len(toCheck),
+	)
+	printf(result, `return 0`)
 	printf(result, "}\n")
 
 	for _, item := range toCheck {
-		var typName string
-		switch item[1] {
-		case "integer":
-			typName = "int"
-		default:
-			typName = item[1]
-		}
+		typName := item[1]
 		*result = append(*result,
 			fmt.Sprintf("var %s %s", item[0], typName))
 	}
 
 	*result = append(*result, "{")
-	*result = append(*result, "\tvar ok bool")
 	for i, item := range toCheck {
+		luaIndex := i + 1
+
 		vName := item[0]
 		vType := item[1]
 
 		switch vType {
-		case "integer":
-			*result = append(*result, "\tvar err error")
-			printf(result, "\tvar %sStr string", vName)
-			printf(result, "\t%sStr, ok = args[%d].(string)", vName, i)
-			printf(result, "\tif !ok {")
-			printf(result, "\t\treturn nil, "+
-				`errors.New("%s: argument %d: %s; must be type %s")`,
-				fname, i, vName, "int(string)")
-			printf(result, "\t}")
-			printf(result, "\t%s, err = strconv.Atoi(%sStr)", vName, vName)
-			printf(result, "\tif err != nil {")
-			printf(result, "\t\treturn nil, err")
-			printf(result, "\t}")
+		case "int":
+			printf(result, "\t%s = L.ToInt(%d)", vName, luaIndex)
+		case "string":
+			printf(result, "\t%s = L.ToString(%d)", vName, luaIndex)
 		default:
-			printf(result, "\t%s, ok = args[%d].(%s)", vName, i, vType)
+			intermediateName := "tmpFor" + strings.Title(vName)
+			printf(result, "\tvar ok bool")
+			printf(result, "\t%s := L.ToUserData(%d)",
+				intermediateName, luaIndex)
+
+			printf(result, "\t%s, ok = %s.Value.(%s)",
+				vName,
+				intermediateName,
+				vType,
+			)
 			printf(result, "\tif !ok {")
-			printf(result, "\t\treturn nil, "+
-				`errors.New("%s: argument %d: %s; must be type %s")`,
-				fname, i, vName, vType)
+			printf(result,
+				`L.RaiseError("%s: argument %d: %s; must be type %s")`,
+				fname, i, vName, vType,
+			)
+			printf(result, `return 0`)
 			printf(result, "\t}")
 		}
 	}
 	*result = append(*result, "}")
 }
 
-func GenerateBinding(
+func GenerateLuaBinding(
 	iname string, // name of interpreter object
 	fname string, // name of function in interpreter
 	call string, // Golang function to call
@@ -69,12 +68,12 @@ func GenerateBinding(
 	toReturn [][]string,
 	result *[]interface{},
 ) {
-	printf(result, iname+`.AddOperation("`+
+	printf(result, iname+`.SetGlobal("`+
 		fname+ // TODO: escape quotes
-		`", func(`+"\n\t"+
-		`args []interface{}) ([]interface{}, error) {`+"\n",
+		`", `+iname+`.NewFunction(func(`+"\n\t"+
+		`L *lua.LState) int {`+"\n",
 	)
-	defer printf(result, "})")
+	defer printf(result, "}))")
 
 	// Gets populated with the variadic argument's name if it exists
 	var variadicArg string
@@ -86,9 +85,7 @@ func GenerateBinding(
 			// Temporary check: warn that only ...interface{} works right now
 			if lastItem[1] != "...interface{}" {
 				logrus.Warn(
-					"Currently the only variadic type supported is " +
-						"interface{}. Type `" + lastItem[1] + "` will not be " +
-						"properly validated.",
+					"Variadic doesn't work in LUA yet.",
 				)
 			}
 			toCheck = toCheck[:len(toCheck)-1]
@@ -99,13 +96,26 @@ func GenerateBinding(
 
 	if len(toCheck) > 0 {
 
-		GenerateVerifyArgs(fname, toCheck, result)
+		GenerateVerifyLuaArgs(fname, toCheck, result)
 
 		if variadicArg != "" {
-			printf(result, "%s := args[%d:]", variadicArg, len(toCheck))
+			printf(result, "%s := []interface{}{}", variadicArg)
+			printf(result, "for i := %d; i <= L.GetTop(); i++ {",
+				len(toCheck)+1)
+			printf(result, "\tlv := L.Get(i)")
+			printf(result, "\tswitch lv.Type() {")
+			printf(result, "\tcase lua.LTString:")
+			printf(result, "\t\t%s = append(%s, L.ToString(i))",
+				variadicArg, variadicArg)
+			printf(result, "\tcase lua.LTNumber:")
+			printf(result, "\t\t%s = append(%s, L.ToNumber(i))",
+				variadicArg, variadicArg)
+			printf(result, "\t}")
+			printf(result, "}")
 		}
 
 		// Check for method receiver
+		// TODO: this is dupe code (genbindings.go)
 		{
 			callPath := strings.Split(call, ".")
 			if len(callPath) > 1 {
@@ -159,17 +169,40 @@ func GenerateBinding(
 	if lastReturnIsTypeError {
 		lastReturnValueName := returnNames[len(returnNames)-1]
 		printf(result, "if %s != nil {", lastReturnValueName)
-		printf(result, "\treturn nil, %s", lastReturnValueName)
+		printf(result, "\tL.")
+		printf(result, "\treturn 0", lastReturnValueName)
 		printf(result, "}")
 	}
 
 	if lastReturnIsTypeError {
 		returnNames = returnNames[:len(returnNames)-1]
+		toReturn = toReturn[:len(toReturn)-1]
+	}
+
+	for i := len(toReturn) - 1; i >= 0; i-- {
+		returnName := toReturn[i][0]
+		returnType := toReturn[i][1]
+
+		// GOTCHA: Do not use `continue` without closing this
+		printf(result, "{")
+
+		switch returnType {
+		case "int":
+			fallthrough
+		case "float64":
+			printf(result, "L.Push(lua.LNumber(%s))", returnName)
+		case "string":
+			printf(result, "L.Push(lua.LString(%s))", returnName)
+		default:
+			printf(result, "tmp := L.NewUserData()")
+			printf(result, "tmp.Value = %s", returnName)
+			printf(result, "L.Push(tmp)")
+		}
+
+		printf(result, "}")
 	}
 
 	// Generate return statement
-	printf(result, "return []interface{}{%s}, nil",
-		strings.Join(returnNames, ","),
-	)
+	printf(result, "return %d", len(toReturn))
 
 }

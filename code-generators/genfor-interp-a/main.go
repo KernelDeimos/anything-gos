@@ -24,6 +24,7 @@ func printf(inI *[]interface{}, format string, args ...interface{}) {
 }
 
 func main() {
+	logrus.Info("program genfor-interp-a v1.1.0")
 	files := os.Args[1:]
 
 	G := genner.NewGennerWithBuiltinsTest()
@@ -97,6 +98,69 @@ func main() {
 		}
 
 		GenerateBinding(
+			iname, fname, call, toCheck, toReturn, &result)
+
+		logrus.Debug("it's okay; everything will be fine...")
+
+		return result, nil
+	})
+
+	G.Interp.AddOperation("lua-binding", func(
+		args []interface{}) ([]interface{}, error) {
+
+		result := []interface{}{}
+
+		//::gen verify-args lua-binding iname string fname string call string args2 []string returns []string
+		if len(args) < 5 {
+			return nil, errors.New("gen-binding requires at least 5 arguments")
+		}
+
+		var iname string
+		var fname string
+		var call string
+		var args2 []string
+		var returns []string
+		{
+			var ok bool
+			iname, ok = args[0].(string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 0: iname; must be type string")
+			}
+			fname, ok = args[1].(string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 1: fname; must be type string")
+			}
+			call, ok = args[2].(string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 2: call; must be type string")
+			}
+			args2, ok = args[3].([]string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 3: args2; must be type []string")
+			}
+			returns, ok = args[4].([]string)
+			if !ok {
+				return nil, errors.New("gen-binding: argument 4: returns; must be type []string")
+			}
+		}
+		//::end
+
+		toCheck := [][]string{}  // size: [n][2]
+		toReturn := [][]string{} // size: [n][2]
+
+		for i := 0; i < len(args2); i += 2 {
+			varName := args2[i]
+			varType := args2[i+1]
+			toCheck = append(toCheck, []string{varName, varType})
+		}
+
+		for i := 0; i < len(returns); i += 2 {
+			varName := returns[i]
+			varType := returns[i+1]
+			toReturn = append(toReturn, []string{varName, varType})
+		}
+
+		GenerateLuaBinding(
 			iname, fname, call, toCheck, toReturn, &result)
 
 		logrus.Debug("it's okay; everything will be fine...")
