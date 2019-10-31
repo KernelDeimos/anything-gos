@@ -1,0 +1,6 @@
+//::gen repcsv '$1 and $2!' (csv:list-to-csvlets 2 a b c d e f g h)
+a and b!
+c and d!
+e and f!
+g and h!
+//::end

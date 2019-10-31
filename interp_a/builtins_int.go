@@ -3,6 +3,7 @@ package interp_a
 import (
 	"errors"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"strconv"
 )
 
@@ -13,6 +14,7 @@ func BuiltinInt(args []interface{}) ([]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+		logrus.Info("Adding: ", iVal)
 		result = append(result, int(iVal))
 	}
 	return result, nil

@@ -1,0 +1,17 @@
+;; Note: rationale here is that
+;;   (funciton) <- denotes that lines below start with a function name
+;;   (data)     <- evaluate as if typed without brackets
+
+: tmplCheckArgs (store (data))
+    concat-lines
+    if len(args) < {{.ArgcA}} {
+        concat
+        return nil, errors.New(
+        "{{.Subject}} requires at least {{.ArgcR}} arguments")
+    }
+
+: tmplArgString (nil)
+: tmplArgInt (nil)
+: tmplArgReal (nil)
+
+;; ? add arg json?

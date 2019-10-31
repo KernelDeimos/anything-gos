@@ -3,10 +3,18 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/iancoleman/strcase"
+	"github.com/rosewoodmedia/gofaast/faast"
+	"github.com/rosewoodmedia/gofaast/faastfmt"
+	"github.com/sirupsen/logrus"
 
 	"github.com/KernelDeimos/anything-gos/genner"
 	"github.com/KernelDeimos/anything-gos/interp_a"
@@ -105,6 +113,86 @@ func main() {
 		return result, nil
 	})
 
+	G.Interp.AddOperation("bind-file", func(
+		args []interface{}) ([]interface{}, error) {
+
+		result := []interface{}{}
+
+		//::gen verify-args gen-bindings-from-file iname string filename string
+		if len(args) < 2 {
+			return nil, errors.New("gen-bindings-from-file requires at least 2 arguments")
+		}
+
+		var iname string
+		var filename string
+		{
+			var ok bool
+			iname, ok = args[0].(string)
+			if !ok {
+				return nil, errors.New("gen-bindings-from-file: argument 0: iname; must be type string")
+			}
+			filename, ok = args[1].(string)
+			if !ok {
+				return nil, errors.New("gen-bindings-from-file: argument 1: filename; must be type string")
+			}
+		}
+		//::end
+
+		// Create the AST by parsing src.
+		fset := token.NewFileSet() // positions are relative to fset
+		data, err := ioutil.ReadFile(filename)
+		if err != nil {
+			panic(err)
+		}
+		f, err := parser.ParseFile(fset, filename, string(data), 0)
+		if err != nil {
+			panic(err)
+		}
+
+		faastp := faastfmt.SimplePrinter{}
+
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok {
+				continue
+			}
+
+			toCheck := [][]string{}  // size: [n][2]
+			toReturn := [][]string{} // size: [n][2]
+
+			call := fn.Name.Name
+			// TODO: code generator to create enumerated types for
+			//       every available function in strcase, then use
+			//       enum type as parameter to define this behaviour.
+			fname := strcase.ToKebab(call)
+
+			if fn.Type.Params != nil {
+				params, _ := faast.FieldListToFaast(fn.Type.Params.List)
+				for _, param := range params {
+					toCheck = append(toCheck, []string{
+						param.Name.Name,
+						faastp.PrintType(param.Type),
+					})
+				}
+			}
+
+			if fn.Type.Results != nil {
+				results, _ := faast.FieldListToFaast(fn.Type.Results.List)
+				for _, result := range results {
+					toReturn = append(toReturn, []string{
+						result.Name.Name,
+						faastp.PrintType(result.Type),
+					})
+				}
+			}
+
+			GenerateBinding(
+				iname, fname, call, toCheck, toReturn, &result)
+		}
+
+		return result, nil
+	})
+
 	G.Interp.AddOperation("lua-binding", func(
 		args []interface{}) ([]interface{}, error) {
 
@@ -112,7 +200,7 @@ func main() {
 
 		//::gen verify-args lua-binding iname string fname string call string args2 []string returns []string
 		if len(args) < 5 {
-			return nil, errors.New("gen-binding requires at least 5 arguments")
+			return nil, errors.New("lua-binding requires at least 5 arguments")
 		}
 
 		var iname string
@@ -124,23 +212,23 @@ func main() {
 			var ok bool
 			iname, ok = args[0].(string)
 			if !ok {
-				return nil, errors.New("gen-binding: argument 0: iname; must be type string")
+				return nil, errors.New("lua-binding: argument 0: iname; must be type string")
 			}
 			fname, ok = args[1].(string)
 			if !ok {
-				return nil, errors.New("gen-binding: argument 1: fname; must be type string")
+				return nil, errors.New("lua-binding: argument 1: fname; must be type string")
 			}
 			call, ok = args[2].(string)
 			if !ok {
-				return nil, errors.New("gen-binding: argument 2: call; must be type string")
+				return nil, errors.New("lua-binding: argument 2: call; must be type string")
 			}
 			args2, ok = args[3].([]string)
 			if !ok {
-				return nil, errors.New("gen-binding: argument 3: args2; must be type []string")
+				return nil, errors.New("lua-binding: argument 3: args2; must be type []string")
 			}
 			returns, ok = args[4].([]string)
 			if !ok {
-				return nil, errors.New("gen-binding: argument 4: returns; must be type []string")
+				return nil, errors.New("lua-binding: argument 4: returns; must be type []string")
 			}
 		}
 		//::end
@@ -262,10 +350,12 @@ func main() {
 					replacements["$ucc-"+strconv.Itoa(i+1)] = c
 				}
 				if repl != "" {
-					a := repl[0:1] + strings.Title(repl[1:])
-					b := strings.Split(a, " ")
-					c := strings.Join(b, "")
-					replacements["$lcc-"+strconv.Itoa(i+1)] = c
+					b := strings.Split(repl, " ")
+					lastPartList := b[1:]
+					lastPartStr := strings.Title(strings.Join(lastPartList, " "))
+					lastPartList = strings.Split(lastPartStr, " ")
+					lastPartStr = strings.Join(lastPartList, "")
+					replacements["$lcc-"+strconv.Itoa(i+1)] = b[0] + lastPartStr
 				}
 				if repl != "" {
 					a := repl[0:1] + strings.ToLower(repl[1:])

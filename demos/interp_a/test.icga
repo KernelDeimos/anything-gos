@@ -1,0 +1,10 @@
+do
+(: a
+    (store-literal
+        cat 'at head' (
+            if (< (get (int 0)) (int 10))
+                (apply ((+ (get (int 0)) (int 1))) a)
+                (cat 'when false')
+            cat 'at tail')))
+
+(return (apply (just (int 0)) a))

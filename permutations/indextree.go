@@ -1,8 +1,8 @@
 package permutations
 
-// IndexTree is named this instead of IntegerTree just to remind myself that
+// BinaryIntNode is named this instead of IntegerTree just to remind myself that
 // it's probably the only other tree I'll need.
-type IndexTree struct {
+type BinaryIntNode struct {
 	Value int
 	Left  *BinaryBoolNode
 	Rite  *BinaryBoolNode

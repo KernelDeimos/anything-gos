@@ -1,0 +1,27 @@
+//::run : fun-list (store apple berry candy delta)
+//::end
+
+//::run : tmpl-setters (fn-gotmpl (DATA))
+test
+{{- range $key, $val := .}}
+ this.{{$val}} = {{$val}};
+{{- end}}
+//::end
+
+//::gen repcsv $1-$2 a,b c,d
+a-b
+c-d
+//::end
+
+//::gen cat (fun-list)
+appleberrycandydelta
+//::end
+
+    test
+    //::gen tmpl-setters (fun-list)
+    test
+    this.apple = apple;
+    this.berry = berry;
+    this.candy = candy;
+    this.delta = delta;
+    //::end

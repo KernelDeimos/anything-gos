@@ -57,6 +57,28 @@ func BuiltinCat(args []interface{}) ([]interface{}, error) {
 	return []interface{}{result}, nil
 }
 
+func BuiltinJoinLF(args []interface{}) ([]interface{}, error) {
+	strs := []string{}
+	for _, arg := range args {
+		strs = append(strs, fmt.Sprint(arg))
+	}
+	return []interface{}{strings.Join(strs, "\n")}, nil
+}
+
+func BuiltinCatFromList(args []interface{}) ([]interface{}, error) {
+	result := ""
+	for _, arg := range args {
+		l, ok := arg.([]interface{})
+		if !ok {
+			return nil, errors.New("unexpected non-list in cat[]")
+		}
+		for _, part := range l {
+			result = result + fmt.Sprint(part)
+		}
+	}
+	return []interface{}{result}, nil
+}
+
 func BuiltinCatRepeat(args []interface{}) ([]interface{}, error) {
 	//::gen verify-args ditto times int
 	if len(args) < 1 {

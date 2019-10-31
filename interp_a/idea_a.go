@@ -59,6 +59,8 @@ func (ifa InterpreterFactoryA) MakeExec() HybridEvaluator {
 	o("format", BuiltinFormat)
 	o("ditto", BuiltinCatRepeat)
 	o("cat", BuiltinCat)
+	o("cat[]", BuiltinCatFromList)
+	o("join-lf", BuiltinJoinLF)
 	o("store", BuiltinStore)
 	o("strings", BuiltinStrings)
 	o("unfile", BuiltinUnfile)
